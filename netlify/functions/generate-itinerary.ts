@@ -207,37 +207,52 @@ async function generateDailySchedule(day: number, city: string, interests: strin
     // Get real places from Google Places API with timeout
     const places = await getCitySpecificPlaces(city, interests);
     
-    // Assign real places to time slots
+    // Calculate starting index for this day to get different places
+    const attractionsPerDay = 4;
+    const startIndex = (day - 1) * attractionsPerDay;
+    
+    // Assign different real places to time slots for each day
     timeSlots.forEach((slot, index) => {
-      if (index < 4 && places.attractions[index]) {
-        const place = places.attractions[index];
+      const placeIndex = startIndex + index;
+      if (placeIndex < places.attractions.length) {
+        const place = places.attractions[placeIndex];
         const duration = Math.random() > 0.5 ? '2 hours' : '1.5 hours';
         dailyActivities.push(`${slot.start} - ${place.name} (${duration}) - ${place.location}`);
       }
     });
     
-    // Add day-specific themed activities with real places
-    if (day === 1 && places.attractions[4]) {
-      dailyActivities.push(`11:00 AM - ${places.attractions[4].name} (1 hour) - ${places.attractions[4].location}`);
-    } else if (day === 2 && places.attractions[5]) {
-      dailyActivities.push(`2:30 PM - ${places.attractions[5].name} (1.5 hours) - ${places.attractions[5].location}`);
-    } else if (day === 3 && places.attractions[6]) {
-      dailyActivities.push(`4:00 PM - ${places.attractions[6].name} (2 hours) - ${places.attractions[6].location}`);
+    // Add day-specific themed activities with different places
+    const extraPlaceIndex = startIndex + 4;
+    if (extraPlaceIndex < places.attractions.length) {
+      const extraPlace = places.attractions[extraPlaceIndex];
+      if (day === 1) {
+        dailyActivities.push(`11:00 AM - ${extraPlace.name} (1 hour) - ${extraPlace.location}`);
+      } else if (day === 2) {
+        dailyActivities.push(`2:30 PM - ${extraPlace.name} (1.5 hours) - ${extraPlace.location}`);
+      } else if (day === 3) {
+        dailyActivities.push(`4:00 PM - ${extraPlace.name} (2 hours) - ${extraPlace.location}`);
+      }
     }
     
-    // Add meals with real restaurant names and locations
+    // Add meals with different restaurants for each day
     const breakfastTime = day === 1 ? '7:30 AM' : day === 2 ? '8:30 AM' : '8:00 AM';
     const lunchTime = day === 1 ? '12:30 PM' : day === 2 ? '1:30 PM' : '1:00 PM';
     const dinnerTime = day === 1 ? '7:30 PM' : day === 2 ? '8:00 PM' : '7:00 PM';
     
-    if (places.restaurants[0]) {
-      dailyMeals.push(`${breakfastTime} - Breakfast at ${places.restaurants[0].name} - ${places.restaurants[0].location} (Rating: ${places.restaurants[0].rating}/5)`);
+    // Use different restaurants for each day
+    const restaurantIndex = (day - 1) % Math.min(places.restaurants.length, 3);
+    if (places.restaurants[restaurantIndex]) {
+      dailyMeals.push(`${breakfastTime} - Breakfast at ${places.restaurants[restaurantIndex].name} - ${places.restaurants[restaurantIndex].location} (Rating: ${places.restaurants[restaurantIndex].rating}/5)`);
     }
-    if (places.restaurants[1]) {
-      dailyMeals.push(`${lunchTime} - Lunch at ${places.restaurants[1].name} - ${places.restaurants[1].location} (Rating: ${places.restaurants[1].rating}/5)`);
+    
+    const lunchRestaurantIndex = (day + 1) % Math.min(places.restaurants.length, 3);
+    if (places.restaurants[lunchRestaurantIndex]) {
+      dailyMeals.push(`${lunchTime} - Lunch at ${places.restaurants[lunchRestaurantIndex].name} - ${places.restaurants[lunchRestaurantIndex].location} (Rating: ${places.restaurants[lunchRestaurantIndex].rating}/5)`);
     }
-    if (places.restaurants[2]) {
-      dailyMeals.push(`${dinnerTime} - Dinner at ${places.restaurants[2].name} - ${places.restaurants[2].location} (Rating: ${places.restaurants[2].rating}/5)`);
+    
+    const dinnerRestaurantIndex = (day + 2) % Math.min(places.restaurants.length, 3);
+    if (places.restaurants[dinnerRestaurantIndex]) {
+      dailyMeals.push(`${dinnerTime} - Dinner at ${places.restaurants[dinnerRestaurantIndex].name} - ${places.restaurants[dinnerRestaurantIndex].location} (Rating: ${places.restaurants[dinnerRestaurantIndex].rating}/5)`);
     }
     
   } catch (error) {
