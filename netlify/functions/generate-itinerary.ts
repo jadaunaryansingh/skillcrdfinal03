@@ -60,8 +60,8 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-             // Generate itinerary with Google Places API (with timeout fallback)
-       const itinerary = await generateMockItinerary(body);
+      // Generate itinerary with Google Places API (with timeout fallback)
+      const itinerary = await generateMockItinerary(body);
       
       return {
         statusCode: 200,
@@ -133,8 +133,10 @@ async function generateMockItinerary(request: ItineraryRequest): Promise<Itinera
 }
 
 async function generateEnhancedDays(days: number, city: string, interests: string[], accommodation: string, dailyCost: number): Promise<ItineraryDay[]> {
-  return Array.from({ length: days }, (_, index) => {
-    const dayNumber = index + 1;
+  const daysArray = [];
+  
+  for (let i = 0; i < days; i++) {
+    const dayNumber = i + 1;
     const selectedInterests = interests.length > 0 ? interests : ['Local Experiences'];
     
     // Generate specific daily schedule with times and locations - make each day unique
@@ -150,14 +152,16 @@ async function generateEnhancedDays(days: number, city: string, interests: strin
     const costVariation = 0.98 + (Math.random() * 0.04); // 98% to 102% of daily cost
     const finalDailyCost = Math.round(dailyCost * costVariation);
     
-    return {
+    daysArray.push({
       day: dayNumber,
       activities: daySchedule.activities,
       meals: daySchedule.meals,
       accommodation: accommodationDesc,
       estimatedCost: finalDailyCost
-    };
-  });
+    });
+  }
+  
+  return daysArray;
 }
 
 async function generateDailySchedule(day: number, city: string, interests: string[], accommodation: string, totalDays: number): Promise<any> {
@@ -200,7 +204,7 @@ async function generateDailySchedule(day: number, city: string, interests: strin
   const timeSlots = dayPatterns[day as keyof typeof dayPatterns]?.slots || dayPatterns[1].slots;
   
   try {
-    // Get real places from Google Places API
+    // Get real places from Google Places API with timeout
     const places = await getCitySpecificPlaces(city, interests);
     
     // Assign real places to time slots
