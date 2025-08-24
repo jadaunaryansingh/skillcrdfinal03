@@ -60,8 +60,8 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      // Generate mock itinerary (since we can't use Google Places API in serverless)
-      const itinerary = await generateMockItinerary(body);
+             // Generate itinerary with Google Places API (with timeout fallback)
+       const itinerary = await generateMockItinerary(body);
       
       return {
         statusCode: 200,
@@ -401,30 +401,33 @@ function generateEnhancedContacts(city: string): string[] {
   ];
 }
 
-// Google Places API functions - Optimized for Netlify functions
+// Google Places API functions - Optimized for Netlify functions with timeout
 async function getCitySpecificPlaces(city: string, interests: string[]): Promise<any> {
   try {
-    // Get city coordinates first
-    const coordinates = await getCityCoordinates(city);
+    // Get city coordinates first with timeout
+    const coordinates = await withTimeout(getCityCoordinates(city), 3000); // 3 second timeout
     if (!coordinates) {
       throw new Error('Could not get city coordinates');
     }
 
-    // Make all API calls in parallel to save time
-    const [attractions, restaurants] = await Promise.all([
-      getPlacesByType(coordinates, 'tourist_attraction', 8),
-      getPlacesByType(coordinates, 'restaurant', 6)
-    ]);
+    // Make all API calls in parallel with timeout
+    const [attractions, restaurants] = await withTimeout(
+      Promise.all([
+        getPlacesByType(coordinates, 'tourist_attraction', 6),
+        getPlacesByType(coordinates, 'restaurant', 4)
+      ]),
+      6000 // 6 second timeout for places
+    );
 
     // Combine and filter attractions
     const allAttractions = attractions
       .filter(place => place.rating >= 3.5)
-      .slice(0, 8);
+      .slice(0, 6);
 
     // Filter restaurants
     const filteredRestaurants = restaurants
       .filter(place => place.rating >= 3.5)
-      .slice(0, 5);
+      .slice(0, 4);
 
     return {
       attractions: allAttractions,
@@ -434,6 +437,16 @@ async function getCitySpecificPlaces(city: string, interests: string[]): Promise
     console.error('Error in getCitySpecificPlaces:', error);
     throw error;
   }
+}
+
+// Timeout wrapper function
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error('API timeout')), timeoutMs)
+    )
+  ]);
 }
 
 async function getCityCoordinates(city: string): Promise<{lat: number, lng: number} | null> {
