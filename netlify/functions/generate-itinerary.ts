@@ -218,6 +218,14 @@ async function generateDailySchedule(day: number, city: string, interests: strin
         const place = places.attractions[placeIndex];
         const duration = Math.random() > 0.5 ? '2 hours' : '1.5 hours';
         dailyActivities.push(`${slot.start} - ${place.name} (${duration}) - ${place.location}`);
+      } else {
+        // Fallback: use a place from the beginning of the list if we run out
+        const fallbackIndex = index % places.attractions.length;
+        if (places.attractions[fallbackIndex]) {
+          const place = places.attractions[fallbackIndex];
+          const duration = Math.random() > 0.5 ? '2 hours' : '1.5 hours';
+          dailyActivities.push(`${slot.start} - ${place.name} (${duration}) - ${place.location}`);
+        }
       }
     });
     
@@ -231,6 +239,19 @@ async function generateDailySchedule(day: number, city: string, interests: strin
         dailyActivities.push(`2:30 PM - ${extraPlace.name} (1.5 hours) - ${extraPlace.location}`);
       } else if (day === 3) {
         dailyActivities.push(`4:00 PM - ${extraPlace.name} (2 hours) - ${extraPlace.location}`);
+      }
+    } else {
+      // Fallback: use a different place from the available list
+      const fallbackExtraIndex = (day * 2) % places.attractions.length;
+      if (places.attractions[fallbackExtraIndex]) {
+        const extraPlace = places.attractions[fallbackExtraIndex];
+        if (day === 1) {
+          dailyActivities.push(`11:00 AM - ${extraPlace.name} (1 hour) - ${extraPlace.location}`);
+        } else if (day === 2) {
+          dailyActivities.push(`2:30 PM - ${extraPlace.name} (1.5 hours) - ${extraPlace.location}`);
+        } else if (day === 3) {
+          dailyActivities.push(`4:00 PM - ${extraPlace.name} (2 hours) - ${extraPlace.location}`);
+        }
       }
     }
     
@@ -432,8 +453,8 @@ async function getCitySpecificPlaces(city: string, interests: string[]): Promise
     // Make all API calls in parallel with timeout
     const [attractions, restaurants] = await withTimeout(
       Promise.all([
-        getPlacesByType(coordinates, 'tourist_attraction', 6),
-        getPlacesByType(coordinates, 'restaurant', 4)
+        getPlacesByType(coordinates, 'tourist_attraction', 12), // Increased from 6 to 12
+        getPlacesByType(coordinates, 'restaurant', 6) // Increased from 4 to 6
       ]),
       6000 // 6 second timeout for places
     );
@@ -441,12 +462,12 @@ async function getCitySpecificPlaces(city: string, interests: string[]): Promise
     // Combine and filter attractions
     const allAttractions = attractions
       .filter(place => place.rating >= 3.5)
-      .slice(0, 6);
+      .slice(0, 12); // Increased from 6 to 12
 
     // Filter restaurants
     const filteredRestaurants = restaurants
       .filter(place => place.rating >= 3.5)
-      .slice(0, 4);
+      .slice(0, 6); // Increased from 4 to 6
 
     return {
       attractions: allAttractions,
