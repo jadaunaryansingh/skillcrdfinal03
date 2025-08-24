@@ -106,22 +106,21 @@ async function generateMockItinerary(request: ItineraryRequest): Promise<Itinera
   
   // Generate accommodation-specific daily costs that fit within budget
   const accommodationMultipliers = {
-    budget: 0.4,     // 40% of daily budget (very budget-friendly)
-    hotel: 0.6,      // 60% of daily budget (moderate)
-    luxury: 0.8,     // 80% of daily budget (luxury but controlled)
-    apartment: 0.5,  // 50% of daily budget
-    camping: 0.3     // 30% of daily budget (very cheap)
+    budget: 0.3,     // 30% of daily budget (very budget-friendly)
+    hotel: 0.4,      // 40% of daily budget (moderate)
+    luxury: 0.5,     // 50% of daily budget (luxury but controlled)
+    apartment: 0.35, // 35% of daily budget
+    camping: 0.2     // 20% of daily budget (very cheap)
   };
   
-  const multiplier = accommodationMultipliers[accommodation as keyof typeof accommodationMultipliers] || 0.6;
+  const multiplier = accommodationMultipliers[accommodation as keyof typeof accommodationMultipliers] || 0.4;
   const adjustedDailyCost = Math.min(maxDailyBudget * multiplier, maxDailyBudget);
   
-  // Ensure total cost doesn't exceed budget - be more strict
+  // Ensure total cost doesn't exceed budget - be very strict
   const totalCost = adjustedDailyCost * days;
-  const finalBudget = Math.min(budgetInINR, totalCost);
   
   // Final safety check - ensure we never exceed user's budget
-  const safetyBudget = Math.min(finalBudget, budgetInINR);
+  const safetyBudget = Math.min(totalCost, budgetInINR);
   
   return {
     city,
@@ -139,7 +138,7 @@ async function generateEnhancedDays(days: number, city: string, interests: strin
     const selectedInterests = interests.length > 0 ? interests : ['Local Experiences'];
     
     // Generate specific daily schedule with times and locations - make each day unique
-    const daySchedule = generateDailySchedule(dayNumber, city, selectedInterests, accommodation, days);
+    const daySchedule = await generateDailySchedule(dayNumber, city, selectedInterests, accommodation, days);
     
     // Vary accommodation description by day
     let accommodationDesc = `${accommodation.charAt(0).toUpperCase() + accommodation.slice(1)} accommodation in ${city}`;
@@ -147,8 +146,8 @@ async function generateEnhancedDays(days: number, city: string, interests: strin
     else if (dayNumber === days) accommodationDesc = `Final night at your ${accommodation} in ${city}`;
     else accommodationDesc = `Continue your stay at ${accommodation} in ${city}`;
     
-    // Calculate daily cost with minimal variation to stay within budget
-    const costVariation = 0.95 + (Math.random() * 0.1); // 95% to 105% of daily cost
+    // Calculate daily cost with very minimal variation to stay within budget
+    const costVariation = 0.98 + (Math.random() * 0.04); // 98% to 102% of daily cost
     const finalDailyCost = Math.round(dailyCost * costVariation);
     
     return {
@@ -161,7 +160,7 @@ async function generateEnhancedDays(days: number, city: string, interests: strin
   });
 }
 
-function generateDailySchedule(day: number, city: string, interests: string[], accommodation: string, totalDays: number): any {
+async function generateDailySchedule(day: number, city: string, interests: string[], accommodation: string, totalDays: number): Promise<any> {
   // Create a structured daily schedule - make each day unique
   const dailyActivities = [];
   const dailyMeals = [];
@@ -200,52 +199,70 @@ function generateDailySchedule(day: number, city: string, interests: string[], a
   // Use day-specific pattern or default pattern
   const timeSlots = dayPatterns[day as keyof typeof dayPatterns]?.slots || dayPatterns[1].slots;
   
-  // Generate activities for the day
-  const landmarks = [
-    `${city} City Center`,
-    `${city} Main Square`,
-    `${city} Local Market`,
-    `${city} Historical District`,
-    `${city} Cultural Quarter`
-  ];
-  
-  // Rotate through landmarks based on day number
-  const startIndex = (day - 1) * 2;
-  const rotatedLandmarks = [...landmarks.slice(startIndex), ...landmarks.slice(0, startIndex)];
-  
-  // Assign landmarks to time slots
-  timeSlots.forEach((slot, index) => {
-    if (index < 4 && rotatedLandmarks[index]) {
-      const duration = Math.random() > 0.5 ? '2 hours' : '1.5 hours';
-      dailyActivities.push(`${slot.start} - ${rotatedLandmarks[index]} (${duration}) - City Center`);
+  try {
+    // Get real places from Google Places API
+    const places = await getCitySpecificPlaces(city, interests);
+    
+    // Assign real places to time slots
+    timeSlots.forEach((slot, index) => {
+      if (index < 4 && places.attractions[index]) {
+        const place = places.attractions[index];
+        const duration = Math.random() > 0.5 ? '2 hours' : '1.5 hours';
+        dailyActivities.push(`${slot.start} - ${place.name} (${duration}) - ${place.location}`);
+      }
+    });
+    
+    // Add day-specific themed activities with real places
+    if (day === 1 && places.attractions[4]) {
+      dailyActivities.push(`11:00 AM - ${places.attractions[4].name} (1 hour) - ${places.attractions[4].location}`);
+    } else if (day === 2 && places.attractions[5]) {
+      dailyActivities.push(`2:30 PM - ${places.attractions[5].name} (1.5 hours) - ${places.attractions[5].location}`);
+    } else if (day === 3 && places.attractions[6]) {
+      dailyActivities.push(`4:00 PM - ${places.attractions[6].name} (2 hours) - ${places.attractions[6].location}`);
     }
-  });
-  
-  // Add day-specific themed activities
-  if (day === 1) {
-    dailyActivities.push(`11:00 AM - ${city} Orientation Tour (1 hour) - Tourist Center`);
-  } else if (day === 2) {
-    dailyActivities.push(`2:30 PM - ${city} Local Market Experience (1.5 hours) - Market District`);
-  } else if (day === 3) {
-    dailyActivities.push(`4:00 PM - ${city} Shopping & Entertainment (2 hours) - Shopping District`);
+    
+    // Add meals with real restaurant names and locations
+    const breakfastTime = day === 1 ? '7:30 AM' : day === 2 ? '8:30 AM' : '8:00 AM';
+    const lunchTime = day === 1 ? '12:30 PM' : day === 2 ? '1:30 PM' : '1:00 PM';
+    const dinnerTime = day === 1 ? '7:30 PM' : day === 2 ? '8:00 PM' : '7:00 PM';
+    
+    if (places.restaurants[0]) {
+      dailyMeals.push(`${breakfastTime} - Breakfast at ${places.restaurants[0].name} - ${places.restaurants[0].location} (Rating: ${places.restaurants[0].rating}/5)`);
+    }
+    if (places.restaurants[1]) {
+      dailyMeals.push(`${lunchTime} - Lunch at ${places.restaurants[1].name} - ${places.restaurants[1].location} (Rating: ${places.restaurants[1].rating}/5)`);
+    }
+    if (places.restaurants[2]) {
+      dailyMeals.push(`${dinnerTime} - Dinner at ${places.restaurants[2].name} - ${places.restaurants[2].location} (Rating: ${places.restaurants[2].rating}/5)`);
+    }
+    
+  } catch (error) {
+    console.error('Error fetching places:', error);
+    // Fallback to generic names if API fails
+    const landmarks = [
+      `${city} City Center`,
+      `${city} Main Square`,
+      `${city} Local Market`,
+      `${city} Historical District`,
+      `${city} Cultural Quarter`
+    ];
+    
+    timeSlots.forEach((slot, index) => {
+      if (index < 4 && landmarks[index]) {
+        const duration = Math.random() > 0.5 ? '2 hours' : '1.5 hours';
+        dailyActivities.push(`${slot.start} - ${landmarks[index]} (${duration}) - City Center`);
+      }
+    });
+    
+    // Add generic meals
+    const breakfastTime = day === 1 ? '7:30 AM' : day === 2 ? '8:30 AM' : '8:00 AM';
+    const lunchTime = day === 1 ? '12:30 PM' : day === 2 ? '1:30 PM' : '1:00 PM';
+    const dinnerTime = day === 1 ? '7:30 PM' : day === 2 ? '8:00 PM' : '7:00 PM';
+    
+    dailyMeals.push(`${breakfastTime} - Breakfast at ${city} Local Cafe - City Center (Rating: 4.0/5)`);
+    dailyMeals.push(`${lunchTime} - Lunch at ${city} Traditional Restaurant - Market District (Rating: 4.2/5)`);
+    dailyMeals.push(`${dinnerTime} - Dinner at ${city} Fine Dining - Cultural Quarter (Rating: 4.5/5)`);
   }
-  
-  // Add meals with specific times and locations - vary by day
-  const restaurants = [
-    `${city} Local Cafe`,
-    `${city} Traditional Restaurant`,
-    `${city} Fine Dining`,
-    `${city} Street Food Corner`,
-    `${city} Rooftop Bistro`
-  ];
-  
-  const breakfastTime = day === 1 ? '7:30 AM' : day === 2 ? '8:30 AM' : '8:00 AM';
-  const lunchTime = day === 1 ? '12:30 PM' : day === 2 ? '1:30 PM' : '1:00 PM';
-  const dinnerTime = day === 1 ? '7:30 PM' : day === 2 ? '8:00 PM' : '7:00 PM';
-  
-  dailyMeals.push(`${breakfastTime} - Breakfast at ${restaurants[0]} - City Center (Rating: 4.0/5)`);
-  dailyMeals.push(`${lunchTime} - Lunch at ${restaurants[1]} - Market District (Rating: 4.2/5)`);
-  dailyMeals.push(`${dinnerTime} - Dinner at ${restaurants[2]} - Cultural Quarter (Rating: 4.5/5)`);
   
   return {
     activities: dailyActivities.slice(0, 4),
@@ -295,4 +312,90 @@ function generateEnhancedContacts(city: string): string[] {
     `${city} Tourism Board: Visit official tourism website`,
     'Local Emergency: Ask hotel staff for local emergency numbers'
   ];
+}
+
+// Google Places API functions
+async function getCitySpecificPlaces(city: string, interests: string[]): Promise<any> {
+  try {
+    // Get city coordinates first
+    const coordinates = await getCityCoordinates(city);
+    if (!coordinates) {
+      throw new Error('Could not get city coordinates');
+    }
+
+    // Get attractions based on interests
+    const attractions = await getPlacesByType(coordinates, 'tourist_attraction', 10);
+    const museums = await getPlacesByType(coordinates, 'museum', 5);
+    const parks = await getPlacesByType(coordinates, 'park', 5);
+    const shopping = await getPlacesByType(coordinates, 'shopping_mall', 5);
+    
+    // Get restaurants
+    const restaurants = await getPlacesByType(coordinates, 'restaurant', 8);
+    const cafes = await getPlacesByType(coordinates, 'cafe', 5);
+
+    // Combine and filter attractions
+    const allAttractions = [...attractions, ...museums, ...parks, ...shopping]
+      .filter(place => place.rating >= 3.5)
+      .slice(0, 10);
+
+    // Filter restaurants
+    const filteredRestaurants = restaurants
+      .filter(place => place.rating >= 3.5)
+      .slice(0, 5);
+
+    return {
+      attractions: allAttractions,
+      restaurants: filteredRestaurants
+    };
+  } catch (error) {
+    console.error('Error in getCitySpecificPlaces:', error);
+    throw error;
+  }
+}
+
+async function getCityCoordinates(city: string): Promise<{lat: number, lng: number} | null> {
+  const GOOGLE_API_KEY = 'AIzaSyB5Kt5DEwqzOX5d6fMMVN_tcAz5IYcp34c';
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(city)}&key=${GOOGLE_API_KEY}`;
+  
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.results && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      return { lat: location.lat, lng: location.lng };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting coordinates:', error);
+    return null;
+  }
+}
+
+async function getPlacesByType(coordinates: {lat: number, lng: number}, type: string, maxResults: number = 10): Promise<any[]> {
+  const GOOGLE_API_KEY = 'AIzaSyB5Kt5DEwqzOX5d6fMMVN_tcAz5IYcp34c';
+  const radius = 5000; // 5km radius
+  
+  const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${coordinates.lat},${coordinates.lng}&radius=${radius}&type=${type}&key=${GOOGLE_API_KEY}`;
+  
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.results) {
+      return data.results
+        .filter(place => place.rating >= 3.5)
+        .slice(0, maxResults)
+        .map(place => ({
+          name: place.name,
+          location: place.vicinity || 'City Center',
+          rating: place.rating || 4.0,
+          type: type
+        }));
+    }
+    return [];
+  } catch (error) {
+    console.error(`Error getting ${type} places:`, error);
+    return [];
+  }
 }
