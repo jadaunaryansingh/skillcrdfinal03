@@ -21,6 +21,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@netlify/functions": "^4.2.2",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "lucide-react": "^0.541.0",

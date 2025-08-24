@@ -97,7 +97,12 @@ export function ItineraryPlanner() {
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8081/api/generate-itinerary', {
+      // Use production API endpoint when deployed, fallback to localhost for development
+      const apiUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:8081/api/generate-itinerary'
+        : '/.netlify/functions/generate-itinerary';
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
