@@ -185,26 +185,32 @@ function createStructuredItinerary(apiResponse: string, request: ItineraryReques
 async function generateMockItinerary(request: ItineraryRequest): Promise<ItineraryResponse> {
   const { city, budget, days, travelers, interests, accommodation, transportation } = request;
   
-  // Generate realistic daily costs based on accommodation type (in INR)
-  const dailyCosts = {
-    budget: 6500,    // ₹6,500 per day
-    hotel: 12000,    // ₹12,000 per day
-    luxury: 25000,   // ₹25,000 per day
-    apartment: 10000, // ₹10,000 per day
-    camping: 3000    // ₹3,000 per day
+  // Convert USD budget to INR
+  const budgetInINR = budget * 83; // Approximate USD to INR conversion
+  
+  // Calculate realistic daily budget based on user's actual budget
+  const maxDailyBudget = Math.floor(budgetInINR / days);
+  
+  // Generate accommodation-specific daily costs that fit within budget
+  const accommodationMultipliers = {
+    budget: 0.6,     // 60% of daily budget
+    hotel: 0.8,      // 80% of daily budget
+    luxury: 1.2,     // 120% of daily budget (may exceed budget)
+    apartment: 0.7,  // 70% of daily budget
+    camping: 0.4     // 40% of daily budget
   };
   
-  const baseDailyCost = dailyCosts[accommodation as keyof typeof dailyCosts] || 12000;
-  const totalDailyCost = baseDailyCost * days;
+  const multiplier = accommodationMultipliers[accommodation as keyof typeof accommodationMultipliers] || 0.8;
+  const adjustedDailyCost = Math.min(maxDailyBudget * multiplier, maxDailyBudget);
   
-  // Ensure we stay within budget (convert USD to INR if needed)
-  const budgetInINR = budget * 83; // Approximate USD to INR conversion
-  const adjustedDailyCost = Math.min(baseDailyCost, budgetInINR / days);
+  // Ensure total cost doesn't exceed budget
+  const totalCost = adjustedDailyCost * days;
+  const finalBudget = Math.min(budgetInINR, totalCost);
   
   return {
     city,
     summary: `Experience the magic of ${city} with this carefully crafted ${days}-day itinerary! Discover ${interests.join(', ')} while enjoying ${accommodation} accommodations and ${transportation} transportation. Your adventure is perfectly planned to fit within your ₹${budgetInINR.toLocaleString('en-IN')} budget.`,
-    totalBudget: Math.min(budgetInINR, totalDailyCost),
+    totalBudget: finalBudget,
     days: await generateEnhancedDays(days, city, interests, accommodation, adjustedDailyCost),
     tips: generateEnhancedTips(city, interests),
     emergencyContacts: generateEnhancedContacts(city)
@@ -228,12 +234,16 @@ async function generateEnhancedDays(days: number, city: string, interests: strin
     else if (dayNumber === days) accommodationDesc = `Final night at your ${accommodation} in ${city}`;
     else accommodationDesc = `Continue your stay at ${accommodation} in ${city}`;
     
+    // Calculate daily cost with some variation but stay within budget
+    const costVariation = 0.9 + (Math.random() * 0.2); // 90% to 110% of daily cost
+    const finalDailyCost = Math.round(dailyCost * costVariation);
+    
     return {
       day: dayNumber,
       activities: daySchedule.activities,
       meals: daySchedule.meals,
       accommodation: accommodationDesc,
-      estimatedCost: Math.round(dailyCost * (0.8 + Math.random() * 0.4))
+      estimatedCost: finalDailyCost
     };
   });
 }
