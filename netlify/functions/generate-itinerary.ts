@@ -106,24 +106,27 @@ async function generateMockItinerary(request: ItineraryRequest): Promise<Itinera
   
   // Generate accommodation-specific daily costs that fit within budget
   const accommodationMultipliers = {
-    budget: 0.6,     // 60% of daily budget
-    hotel: 0.8,      // 80% of daily budget
-    luxury: 1.2,     // 120% of daily budget (may exceed budget)
-    apartment: 0.7,  // 70% of daily budget
-    camping: 0.4     // 40% of daily budget
+    budget: 0.4,     // 40% of daily budget (very budget-friendly)
+    hotel: 0.6,      // 60% of daily budget (moderate)
+    luxury: 0.8,     // 80% of daily budget (luxury but controlled)
+    apartment: 0.5,  // 50% of daily budget
+    camping: 0.3     // 30% of daily budget (very cheap)
   };
   
-  const multiplier = accommodationMultipliers[accommodation as keyof typeof accommodationMultipliers] || 0.8;
+  const multiplier = accommodationMultipliers[accommodation as keyof typeof accommodationMultipliers] || 0.6;
   const adjustedDailyCost = Math.min(maxDailyBudget * multiplier, maxDailyBudget);
   
-  // Ensure total cost doesn't exceed budget
+  // Ensure total cost doesn't exceed budget - be more strict
   const totalCost = adjustedDailyCost * days;
   const finalBudget = Math.min(budgetInINR, totalCost);
+  
+  // Final safety check - ensure we never exceed user's budget
+  const safetyBudget = Math.min(finalBudget, budgetInINR);
   
   return {
     city,
     summary: `Experience the magic of ${city} with this carefully crafted ${days}-day itinerary! Discover ${interests.join(', ')} while enjoying ${accommodation} accommodations and ${transportation} transportation. Your adventure is perfectly planned to fit within your ₹${budgetInINR.toLocaleString('en-IN')} budget.`,
-    totalBudget: finalBudget,
+    totalBudget: safetyBudget,
     days: await generateEnhancedDays(days, city, interests, accommodation, adjustedDailyCost),
     tips: generateEnhancedTips(city, interests),
     emergencyContacts: generateEnhancedContacts(city)
@@ -144,8 +147,8 @@ async function generateEnhancedDays(days: number, city: string, interests: strin
     else if (dayNumber === days) accommodationDesc = `Final night at your ${accommodation} in ${city}`;
     else accommodationDesc = `Continue your stay at ${accommodation} in ${city}`;
     
-    // Calculate daily cost with some variation but stay within budget
-    const costVariation = 0.9 + (Math.random() * 0.2); // 90% to 110% of daily cost
+    // Calculate daily cost with minimal variation to stay within budget
+    const costVariation = 0.95 + (Math.random() * 0.1); // 95% to 105% of daily cost
     const finalDailyCost = Math.round(dailyCost * costVariation);
     
     return {
