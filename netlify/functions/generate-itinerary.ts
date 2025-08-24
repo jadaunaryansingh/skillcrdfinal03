@@ -98,8 +98,8 @@ export const handler: Handler = async (event, context) => {
 async function generateMockItinerary(request: ItineraryRequest): Promise<ItineraryResponse> {
   const { city, budget, days, travelers, interests, accommodation, transportation } = request;
   
-  // Convert USD budget to INR
-  const budgetInINR = budget * 83; // Approximate USD to INR conversion
+  // Budget is already in INR - no conversion needed
+  const budgetInINR = budget;
   
   // Calculate realistic daily budget based on user's actual budget
   const maxDailyBudget = Math.floor(budgetInINR / days);

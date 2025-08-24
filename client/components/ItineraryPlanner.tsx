@@ -172,21 +172,21 @@ export function ItineraryPlanner() {
 
               {/* Budget and Duration */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="budget">Total Budget (USD) - Will convert to INR *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 font-bold">₹</span>
-                    <Input
-                      id="budget"
-                      type="number"
-                      placeholder="1000"
-                      value={formData.budget || ''}
-                      onChange={(e) => handleInputChange('budget', parseInt(e.target.value) || 0)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500">Budget will be converted to INR (₹) in your itinerary</p>
-                </div>
+                                 <div className="space-y-2">
+                   <Label htmlFor="budget">Total Budget (INR) *</Label>
+                   <div className="relative">
+                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 font-bold">₹</span>
+                     <Input
+                       id="budget"
+                       type="number"
+                       placeholder="50000"
+                       value={formData.budget || ''}
+                       onChange={(e) => handleInputChange('budget', parseInt(e.target.value) || 0)}
+                       className="pl-10"
+                     />
+                   </div>
+                   <p className="text-xs text-gray-500">Enter your budget directly in Indian Rupees (₹)</p>
+                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="days">Number of Days *</Label>
                   <div className="relative">
